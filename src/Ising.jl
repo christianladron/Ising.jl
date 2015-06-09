@@ -1,8 +1,8 @@
 module Ising
 
-export Microestado, medicionesIndependientes,magnetizaciónσ,Energíaσ_Fperiódica, correSweeps
+export Ensamble, medicionesIndependientes,magnetizaciónensamble,Energíaensamble_Fperiódica, correSweeps
 
-type Microestado
+type Ensamble
     configuración::Array{Int}
     H::Float64
     β::Float64
@@ -11,7 +11,7 @@ type Microestado
     E::Float64
     δE::Float64
     J::Float64
-    function Microestado(a::Tuple,β::Float64)
+    function Ensamble(a::Tuple,β::Float64)
 	    configuración = rand(-1:2:1,a)
 	    new(configuración,0,β,0,0,0,0,1)
     end
@@ -19,8 +19,8 @@ end
 
 medicionesIndependientes(a,τ) = a[2*τ:2*τ:(length(a)-mod(length(a),2*τ))]
 
-function eligeEspín(σ)
-    configuración = σ.configuración
+function eligeEspín(ensamble)
+    configuración = ensamble.configuración
     tamaño = size(configuración)
     m = tamaño[1]
     n = tamaño[2]
@@ -28,7 +28,7 @@ function eligeEspín(σ)
     espín = (rand(1:m), rand(1:n), rand(1:ñ))
 end
 
-function Erenglónσ_Flibre(renglón)
+function Erenglónensamble_Flibre(renglón)
     E=0
     l = length(renglón)
     for i in 1:l-1
@@ -37,35 +37,35 @@ function Erenglónσ_Flibre(renglón)
     E
 end
 
-function Energíaσ_Flibre(σ)
-    configuración = σ.configuración
+function Energíaensamble_Flibre(ensamble)
+    configuración = ensamble.configuración
     E = 0
     tamaño = size(configuración)
     m = tamaño[1]
     n = tamaño[2]
     ñ = tamaño[3]
     for i in 1:m, j in 1:n
-        E += σ.J*Erenglónσ_Flibre(configuración[i,j,1:end])
+        E += ensamble.J*Erenglónensamble_Flibre(configuración[i,j,1:end])
     end
     for i in 1:n, j in 1:ñ
-        E += σ.J*Erenglónσ_Flibre(configuración[1:end,i,j])
+        E += ensamble.J*Erenglónensamble_Flibre(configuración[1:end,i,j])
     end
     for i in 1:m, j in 1:ñ
-        E += σ.J*Erenglónσ_Flibre(configuración[i,1:end,j])
+        E += ensamble.J*Erenglónensamble_Flibre(configuración[i,1:end,j])
     end
     E
 end
 
-function magnetizaciónσ(σ::Microestado)
-    configuración = σ.configuración
+function magnetizaciónensamble(ensamble::Ensamble)
+    configuración = ensamble.configuración
     sum(configuración)
 end
-function magnetizaciónσ(configuración::Array)
+function magnetizaciónensamble(configuración::Array)
     sum(configuración)
 end
 
-function δEnergía(σ,espín)
-	configuración = σ.configuración
+function δEnergía(ensamble,espín)
+	configuración = ensamble.configuración
 	tamaño = size(configuración)
 	m = tamaño[1]
 	n = tamaño[2]
@@ -73,64 +73,64 @@ function δEnergía(σ,espín)
 	i=espín[1]
 	j=espín[2]
 	k=espín[3]
-	δE = (σ.J*configuración[i,j,mod1(k+1,ñ)]+
-	σ.J*configuración[i,j,mod1(k-1,ñ)]+
-	σ.J*configuración[i,mod1(j+1,n),k]+
-	σ.J*configuración[i,mod1(j-1,n),k]+
-	σ.J*configuración[mod1(i+1,m),j,k]+
-	σ.J*configuración[mod1(i-1,m),j,k]+
-	σ.H*σ.J/abs(σ.J)
+	δE = (ensamble.J*configuración[i,j,mod1(k+1,ñ)]+
+	ensamble.J*configuración[i,j,mod1(k-1,ñ)]+
+	ensamble.J*configuración[i,mod1(j+1,n),k]+
+	ensamble.J*configuración[i,mod1(j-1,n),k]+
+	ensamble.J*configuración[mod1(i+1,m),j,k]+
+	ensamble.J*configuración[mod1(i-1,m),j,k]+
+	ensamble.H*ensamble.J/abs(ensamble.J)
 	)*2*configuración[i,j,k]
 end
 
-function δMagnetización(σ,espín)
-	configuración = σ.configuración
+function δMagnetización(ensamble,espín)
+	configuración = ensamble.configuración
 	δM = -2*configuración[espín...]
 end
 
-function cambioestado(σ,espín)
-       σ.δE += Ising.δEnergía(σ,espín)
-       σ.δM += -2*σ.configuración[espín...]
+function cambioestado(ensamble,espín)
+       ensamble.δE += Ising.δEnergía(ensamble,espín)
+       ensamble.δM += -2*ensamble.configuración[espín...]
        end
 
-function paso(σ)
-	espín = eligeEspín(σ)
-	δE = δEnergía(σ,espín)
-	if exp(-σ.β*δE)>rand()
-		cambioestado(σ,espín)
-		flipσ!(σ,espín)
+function paso(ensamble)
+	espín = eligeEspín(ensamble)
+	δE = δEnergía(ensamble,espín)
+	if exp(-ensamble.β*δE)>rand()
+		cambioestado(ensamble,espín)
+		flipensamble!(ensamble,espín)
 	end
 end
 
 
-function sweep(σ)
-	for j in 1:length(σ.configuración)
-		paso(σ)
+function sweep(ensamble)
+	for j in 1:length(ensamble.configuración)
+		paso(ensamble)
 	end
 end
 
-function correSweeps(σ,sweeps)
+function correSweeps(ensamble,sweeps)
 	Ms = zeros(sweeps)
 	Es = zeros(sweeps)
-	σ.E = Energíaσ_Fperiódica(σ)
-	σ.M = magnetizaciónσ(σ)
-	σ.δE = 0
-	σ.δM = 0
+	ensamble.E = Energíaensamble_Fperiódica(ensamble)
+	ensamble.M = magnetizaciónensamble(ensamble)
+	ensamble.δE = 0
+	ensamble.δM = 0
 	for i in 1:sweeps
-		sweep(σ)
-		Ms[i] = σ.M + σ.δM
-		Es[i] = σ.E + σ.δE
+		sweep(ensamble)
+		Ms[i] = ensamble.M + ensamble.δM
+		Es[i] = ensamble.E + ensamble.δE
 	end
 	{"M"=>Ms,"E"=>Es}
 end
 
 
-function flipσ!(σ,espín)
-    configuración = σ.configuración
+function flipensamble!(ensamble,espín)
+    configuración = ensamble.configuración
     configuración[espín...]*= -1
     return espín
 end
-function Erenglónσ_Fperiódica(renglón)
+function Erenglónensamble_Fperiódica(renglón)
     l = length(renglón)
     E = - renglón[1] * renglón[l]
     for i in 1:l-1
@@ -140,23 +140,23 @@ function Erenglónσ_Fperiódica(renglón)
 end
 
 
-function Energíaσ_Fperiódica(σ::Microestado)
-	configuración=σ.configuración
+function Energíaensamble_Fperiódica(ensamble::Ensamble)
+	configuración=ensamble.configuración
     E = 0
     tamaño = size(configuración)
     m = tamaño[1]
     n = tamaño[2]
     ñ = tamaño[3]
     for i in 1:m, j in 1:n
-        E += σ.J*Erenglónσ_Fperiódica(configuración[i,j,1:end])
+        E += ensamble.J*Erenglónensamble_Fperiódica(configuración[i,j,1:end])
     end
     for i in 1:n, j in 1:ñ
-        E += σ.J*Erenglónσ_Fperiódica(configuración[1:end,i,j])
+        E += ensamble.J*Erenglónensamble_Fperiódica(configuración[1:end,i,j])
     end
     for i in 1:m, j in 1:ñ
-        E += σ.J*Erenglónσ_Fperiódica(configuración[i,1:end,j])
+        E += ensamble.J*Erenglónensamble_Fperiódica(configuración[i,1:end,j])
     end
-    E+magnetizaciónσ(σ)*σ.H*σ.J/abs(σ.J)
+    E+magnetizaciónensamble(ensamble)*ensamble.H*ensamble.J/abs(ensamble.J)
 end
 
 
